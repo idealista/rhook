@@ -23,8 +23,8 @@ Repo contains two files: 'pre-commit' which is the hook itself and a 'paths.json
 
 ```json
 {
-    "realmDataModelPath": Your Realm data model path,
-    "realmMigrationPath": Your Realm Migration file path
+    "realmDataModelPath": "Your Realm data model path",
+    "realmMigrationPath": "Your Realm Migration file path"
 }
 ```
 Example:
