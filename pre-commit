@@ -9,7 +9,7 @@ migration file hasn't, the script will exit non-zero and abort the commit.
 This script is meant to be added as a "pre-commit"-hook. See this page
 for further information:
 
-    http://progit.org/book/ch7-3.html#installing_a_hook
+    https://git-scm.com/book/uz/v2/Customizing-Git-Git-Hooks
 
 In order to make the script work, you'll need to write needed paths (both for
 your realm data model inside your project & the path for the migration file)
