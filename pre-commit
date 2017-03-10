@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+"""
+This is a git commit-hook which can be used to check if Realm data model in your
+project has accidentally been modified without a migration.
+
+If there is a file in the Realm data model path which has changes and the
+migration file hasn't, the script will exit non-zero and abort the commit.
+
+This script is meant to be added as a "pre-commit"-hook. See this page
+for further information:
+
+    http://progit.org/book/ch7-3.html#installing_a_hook
+
+In order to make the script work, you'll need to write needed paths (both for
+your realm data model inside your project & the path for the migration file)
+"""
+
+import subprocess
+import sys
+import json
+from pprint import pprint
+
+# Path to the git binary
+git_binary_path = "/usr/bin/git"
+
+def get_previous_commit_hash():
+    """
+    Returns hash of the previous commit in the log to compare with
+    """
+    try:
+        return subprocess.check_output([git_binary_path,
+                                        'rev-parse',
+                                        '--verify',
+                                        'HEAD']).decode("utf-8").strip()
+    except:
+        return "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+
+def has_changes(commit, path):
+    """
+    Returns true if there are changes related to path
+    """
+    try:
+        diff = diff_with_commit(commit)
+        grep = find_path_in_diff(path, diff)
+        return grep.communicate()[0]
+    except Exception as e:
+        print str(e)
+        return False
+
+def diff_with_commit(commit):
+    """
+    Returns diff with the commit provided
+    """
+    try:
+        return subprocess.Popen([git_binary_path,
+                                "diff",
+                                "--cached",
+                                "--name-only",
+                                commit],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+    except Exception as e:
+        print str(e)
+        return ""
+
+def find_path_in_diff(path, diff):
+    """
+    Finds path provided inside diff provided
+    """
+    try:
+        return subprocess.Popen(["grep",
+                                path],
+                                stdin=diff.stdout,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+    except Exception as e:
+        print str(e)
+        return ""
+
+def parse_json():
+    """
+    Parses JSON file with paths inside your project. JSON file must be located
+    at the root of your project
+    """
+    try:
+        with open('paths.json') as paths_file:
+            return json.load(paths_file)
+    except Exception as e:
+        print str(e)
+        return ""
+
+try:
+    paths = parse_json()
+    print("> Loading paths.json file...")
+    print("> Realm data model path loaded: " + paths["realmDataModelPath"])
+    print("> Realm migration file path loaded: " + paths["realmMigrationPath"])
+
+    print("> Getting previous commit hash...")
+
+    commit = get_previous_commit_hash()
+    has_realm_changes = has_changes(commit, paths["realmDataModelPath"])
+    has_realm_migration_changes = has_changes(commit,
+        paths["realmMigrationPath"])
+
+    print("> Checking if Realm data model has changes...")
+    if (has_realm_changes):
+        print("> Changes detected in Realm data model")
+        print("> Checking if Realm migration file has changes...")
+        if (has_realm_migration_changes):
+            print("> Changes detected in Realm migration file")
+            print("> Proceed to write commit message")
+            sys.exit(0)
+        else:
+            print("> Changes NOT detected in Realm migration file")
+            print("> Aborting commit due to possible migration exception...")
+            sys.exit(1)
+    else:
+        print("> Changes NOT detected in Realm data model")
+        print("> Proceed to write commit message")
+        sys.exit(0)
+
+except Exception as e:
+    print str(e)
+    print("Ops, something was wrong")
+    sys.exit(1)
